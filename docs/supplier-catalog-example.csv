@@ -1,0 +1,2 @@
+supplier_key,supplier_part_number,brand,manufacturer_part_number,title,category,description,barcode,image_url,unit_cost_usd,suggested_retail_usd,source_name,source_reference
+AUTO-VALUE,DEMO-000001,DEMO BRAND,DEMO-ITEM-01,[TEST] Example replacement filter,filters,FICTIONAL DEMO DATA; replace with an authorized supplier export.,,,10.00,18.99,DEMO ONLY,LOCAL-TEST
