@@ -11,7 +11,7 @@
   <link rel="preload" href="/storefront/assets/hero-garage.webp" as="image">
   <link rel="preload" href="/storefront/assets/store-sans-regular.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="/storefront/styles.css">
-  <script src="/storefront/app.js" defer></script>
+  <script src="/storefront/app.js?v=garage-home-20261121" defer></script>
 </head>
 <body>
 <a href="#main" class="skip-link">Skip to content</a>
@@ -94,12 +94,12 @@
       <div class="vehicle-intro"><span class="vehicle-icon"><svg class="icon"><use href="#i-car"/></svg></span><div><h2>What are you driving?</h2><p>Start with your vehicle.</p></div></div>
       <form id="vehicle-form" class="vehicle-form">
         <div class="select-field"><label for="vehicle-year">Year</label><select id="vehicle-year" required><option value="">Select year</option></select></div>
-        <div class="select-field"><label for="vehicle-make">Make</label><select id="vehicle-make" required><option value="">Select make</option></select></div>
+        <div class="select-field"><label for="vehicle-make">Make</label><select id="vehicle-make" required disabled><option value="">Select make</option></select></div>
         <div class="select-field"><label for="vehicle-model">Model</label><select id="vehicle-model" required disabled><option value="">Select model</option></select></div>
-        <div class="select-field configuration-field"><label for="vehicle-configuration">Engine &amp; configuration</label><select id="vehicle-configuration" required disabled><option value="">Select configuration</option></select></div><button class="button button-navy" type="submit" disabled>Find parts</button>
+        <div class="select-field configuration-field"><label for="vehicle-configuration">Engine &amp; configuration</label><select id="vehicle-configuration" disabled><option value="">Select configuration</option></select></div><button class="button button-navy" type="submit" disabled>Save &amp; browse parts</button>
       </form>
     </div>
-    <div class="vehicle-status"><span id="selected-vehicle-status" aria-live="polite">Vehicle lookup becomes available as our catalog is added.</span><a class="text-button" href="/vehicle-directory" style="margin-left:12px">Manage My Garage</a><button id="clear-vehicle" class="text-button" hidden>Clear vehicle</button></div>
+    <div class="vehicle-status"><span id="selected-vehicle-status" aria-live="polite">Select a vehicle for My Garage. Compatibility must be confirmed separately.</span><a class="text-button" href="/vehicle-directory" style="margin-left:12px">Manage My Garage</a></div>
   </div>
 
   <section class="container service-strip" aria-label="Shopping made personal">

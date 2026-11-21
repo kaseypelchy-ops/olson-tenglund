@@ -11,6 +11,8 @@
   let storeSelectionSequence = 0;
   let storeChanging = false;
   let vehicleYears = null;
+  let vehicleModels = [];
+  let vehicleConfigs = [];
   let vehicleLookupMessage = '';
   let vehicleLookupSequence = 0;
   let catalogRequest = 0;
@@ -25,9 +27,26 @@
   };
   const STORE_KEY = 'olson-tenglund.catalog.v2';
   const GARAGE_KEY = 'olson-tenglund.garage.v1';
+  function readGarage() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(GARAGE_KEY) || 'null');
+      return { version: 1, vehicles: Array.isArray(saved?.vehicles) ? saved.vehicles : [], activeKey: saved?.activeKey || null };
+    } catch (_) { return { version: 1, vehicles: [], activeKey: null }; }
+  }
+  function garageKey(vehicle) { return `${vehicle.reference_key}:${vehicle.epa_id ?? 'reference'}`; }
   function garageActiveVehicle() {
-    try { const saved = JSON.parse(localStorage.getItem(GARAGE_KEY) || 'null'); return saved?.vehicles?.find(v => v.reference_key === saved.activeKey) || null; }
-    catch (_) { return null; }
+    const garage = readGarage();
+    return garage.vehicles.find(v => garageKey(v) === garage.activeKey || (v.epa_id == null && v.reference_key === garage.activeKey)) || null;
+  }
+  function garageSaveVehicle(vehicle) {
+    const garage = readGarage();
+    const key = garageKey(vehicle);
+    if (!garage.vehicles.some(v => garageKey(v) === key)) {
+      if (garage.vehicles.length >= 20) throw new Error('My Garage supports up to 20 vehicles. Remove one in Manage My Garage first.');
+      garage.vehicles.push(vehicle);
+    }
+    garage.activeKey = key;
+    localStorage.setItem(GARAGE_KEY, JSON.stringify(garage));
   }
   const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const byId = new Map(products.map((p) => [p.id, p]));
@@ -76,11 +95,8 @@
       const unique = new Map();
       restored.forEach(line => unique.set(line.id, Math.min(99, (unique.get(line.id) || 0) + line.quantity)));
       state.cart = [...unique].map(([id,quantity]) => ({id,quantity}));
-      const v = saved.vehicle;
-      if (v && v.vehicle_key && v.year && v.make && v.model) {
-        const result=await vehicleFacet('configurations',{year:String(v.year),make:String(v.make),model:String(v.model)});
-        state.vehicle=(result.vehicles||[]).find(vehicle=>vehicle.vehicle_key===v.vehicle_key)||null;
-      }
+      // The public garage uses EPA reference IDs, not verified catalog vehicle keys.
+      state.vehicle = null;
       if (lines.length && restored.length < lines.length) toast('Some saved parts could not be verified in the current catalog. Please review your list.');
     } catch (_) { persistenceAvailable = false; }
   }
@@ -251,64 +267,104 @@
     return '<option value="">' + escapeHTML(prompt) + '</option>' + [...new Set(values)].map(value => '<option value="' + escapeHTML(value) + '">' + escapeHTML(value) + '</option>').join('');
   }
 
-  async function vehicleFacet(field, filters = {}) {
-    const params = new URLSearchParams({field,...filters});
-    const response = await fetch('/api/catalog/vehicles?' + params);
-    if (!response.ok) throw new Error('Vehicle lookup is temporarily unavailable. Call the store for help.');
+  async function directoryLookup(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Vehicle selection is unavailable. Please try again or contact the parts counter.');
     return response.json();
   }
-  function clearVehicleSelect(id, prompt) { const input=$(id); input.innerHTML=optionList([],prompt); input.disabled=true; }
-  function disableVehicleSubmit() { $('vehicle-form').querySelector('button[type=submit]').disabled=true; }
-  async function fillVehicleMakes(selectedMake) {
-    const sequence=++vehicleLookupSequence;
-    clearVehicleSelect('vehicle-make','Select make'); clearVehicleSelect('vehicle-model','Select model'); clearVehicleSelect('vehicle-configuration','Select configuration'); disableVehicleSubmit();
-    const year=$('vehicle-year').value; if(!year)return;
-    try {
-      const result=await vehicleFacet('makes',{year}); if(sequence!==vehicleLookupSequence)return;
-      $('vehicle-make').innerHTML=optionList(result.values||[],'Select make'); $('vehicle-make').disabled=!(result.values||[]).length;
-      if((result.values||[]).includes(selectedMake))$('vehicle-make').value=selectedMake;
-      vehicleLookupMessage=result.truncated?'Additional makes are available through the parts counter.':'';
-    } catch(error){vehicleLookupMessage=error.message;renderVehicle();}
+  function clearVehicleSelect(id, prompt) {
+    const input = $(id); input.innerHTML = optionList([], prompt); input.disabled = true;
   }
-  async function fillVehicleModels(selectedModel) {
-    const sequence=++vehicleLookupSequence;
-    clearVehicleSelect('vehicle-model','Select model'); clearVehicleSelect('vehicle-configuration','Select configuration'); disableVehicleSubmit();
-    const year=$('vehicle-year').value,make=$('vehicle-make').value; if(!year||!make)return;
-    try {
-      const result=await vehicleFacet('models',{year,make}); if(sequence!==vehicleLookupSequence)return;
-      $('vehicle-model').innerHTML=optionList(result.values||[],'Select model'); $('vehicle-model').disabled=!(result.values||[]).length;
-      if((result.values||[]).includes(selectedModel))$('vehicle-model').value=selectedModel;
-      vehicleLookupMessage=result.truncated?'Additional models are available through the parts counter.':'';
-    } catch(error){vehicleLookupMessage=error.message;renderVehicle();}
+  function disableVehicleSubmit() { $('vehicle-form').querySelector('button[type=submit]').disabled = true; }
+  function vehicleEngineLabel(c) {
+    return [c.engine_displacement_l != null ? `${c.engine_displacement_l}L` : '',
+      c.cylinders != null ? `${c.cylinders} cylinders` : '', c.engine_description || '',
+      c.electric_motor || '', c.fuel_type_primary || c.fuel_type || ''].filter(Boolean).join(' · ') || 'Engine not listed';
   }
-  async function fillVehicleConfigurations(selectedKey) {
-    const sequence=++vehicleLookupSequence;
-    clearVehicleSelect('vehicle-configuration','Select configuration');disableVehicleSubmit();
-    const year=$('vehicle-year').value,make=$('vehicle-make').value,model=$('vehicle-model').value;if(!year||!make||!model)return;
+  function vehicleDriveLabel(c) { return c.drive?.trim() || 'Drivetrain not listed'; }
+  function vehicleTransmissionLabel(c) {
+    return [c.transmission || c.transmission_description || 'Transmission not listed',
+      ...(c.transmission && c.transmission_description && c.transmission !== c.transmission_description ? [c.transmission_description] : [])].join(' · ');
+  }
+  async function fillVehicleMakes() {
+    const sequence = ++vehicleLookupSequence;
+    vehicleModels = []; vehicleConfigs = [];
+    clearVehicleSelect('vehicle-make', 'Select make');
+    clearVehicleSelect('vehicle-model', 'Select model');
+    clearVehicleSelect('vehicle-configuration', 'Select configuration');
+    disableVehicleSubmit();
+    const year = $('vehicle-year').value;
+    if (!year) return;
     try {
-      const result=await vehicleFacet('configurations',{year,make,model}); if(sequence!==vehicleLookupSequence)return;
-      vehicles=result.vehicles||[];
-      $('vehicle-configuration').innerHTML='<option value="">Select configuration</option>'+vehicles.map(v=>'<option value="'+escapeHTML(v.vehicle_key)+'">'+escapeHTML([v.engine,v.drivetrain,v.transmission,v.body,v.trim,v.market].filter(Boolean).join(' · ')||v.vehicle_key)+'</option>').join('');
-      $('vehicle-configuration').disabled=!vehicles.length;
-      if(vehicles.some(v=>v.vehicle_key===selectedKey))$('vehicle-configuration').value=selectedKey;
-      $('vehicle-form').querySelector('button[type=submit]').disabled=!vehicles.length;
-      vehicleLookupMessage=result.truncated?'Showing the first 1,000 configurations. Call the parts counter if yours is not listed.':'';renderVehicle();
-    } catch(error){vehicleLookupMessage=error.message;renderVehicle();}
+      const result = await directoryLookup('/api/vehicle-directory?year=' + encodeURIComponent(year));
+      if (sequence !== vehicleLookupSequence) return;
+      $('vehicle-make').innerHTML = optionList(result.makes || [], 'Select make');
+      $('vehicle-make').disabled = !(result.makes || []).length;
+      vehicleLookupMessage = ''; renderVehicle();
+    } catch (error) { if (sequence === vehicleLookupSequence) { vehicleLookupMessage = error.message; renderVehicle(); } }
+  }
+  async function fillVehicleModels() {
+    const sequence = ++vehicleLookupSequence;
+    vehicleModels = []; vehicleConfigs = [];
+    clearVehicleSelect('vehicle-model', 'Select model');
+    clearVehicleSelect('vehicle-configuration', 'Select configuration');
+    disableVehicleSubmit();
+    const year = $('vehicle-year').value, make = $('vehicle-make').value;
+    if (!year || !make) return;
+    try {
+      const result = await directoryLookup('/api/vehicle-directory/options?' + new URLSearchParams({year,make}));
+      if (sequence !== vehicleLookupSequence) return;
+      vehicleModels = result.models || [];
+      $('vehicle-model').innerHTML = '<option value="">Select model</option>' + vehicleModels.map(v =>
+        '<option value="' + escapeHTML(v.reference_key) + '">' + escapeHTML(v.display_model + (v.configuration_hint ? ' · ' + v.configuration_hint : '')) + '</option>').join('');
+      $('vehicle-model').disabled = !vehicleModels.length;
+      vehicleLookupMessage = ''; renderVehicle();
+    } catch (error) { if (sequence === vehicleLookupSequence) { vehicleLookupMessage = error.message; renderVehicle(); } }
+  }
+  async function fillVehicleConfigurations() {
+    const sequence = ++vehicleLookupSequence;
+    vehicleConfigs = [];
+    clearVehicleSelect('vehicle-configuration', 'Select configuration');
+    disableVehicleSubmit();
+    const referenceKey = $('vehicle-model').value;
+    if (!referenceKey) return;
+    vehicleLookupMessage = 'Loading available vehicle configurations…'; renderVehicle();
+    try {
+      const result = await directoryLookup('/api/vehicle-directory/configurations?referenceKey=' + encodeURIComponent(referenceKey));
+      if (sequence !== vehicleLookupSequence) return;
+      vehicleConfigs = result.configurations || [];
+      const select = $('vehicle-configuration');
+      select.innerHTML = '<option value="">' + (vehicleConfigs.length ? 'Select engine / drivetrain / transmission' : 'No detailed EPA configuration') + '</option>' +
+        vehicleConfigs.map(c => '<option value="' + escapeHTML(c.epa_id) + '">' +
+          escapeHTML([vehicleEngineLabel(c), vehicleDriveLabel(c), vehicleTransmissionLabel(c)].join(' · ')) + '</option>').join('');
+      select.disabled = !vehicleConfigs.length;
+      select.required = vehicleConfigs.length > 0;
+      $('vehicle-form').querySelector('button[type=submit]').disabled = false;
+      vehicleLookupMessage = vehicleConfigs.length
+        ? 'Choose the exact configuration, then save it to My Garage. Parts fitment is not yet verified.'
+        : 'You can save this year, make and model. Detailed configuration data is unavailable; parts fitment is not verified.';
+      renderVehicle();
+    } catch (error) { if (sequence === vehicleLookupSequence) { vehicleLookupMessage = error.message; renderVehicle(); } }
   }
   function renderVehicle() {
     const garageVehicle = garageActiveVehicle();
-    $('vehicle-label').textContent=garageVehicle ? [garageVehicle.year,garageVehicle.make,garageVehicle.display_model,garageVehicle.configuration_label].filter(Boolean).join(' · ') : 'My Garage · Add a vehicle';
-    $('selected-vehicle-status').textContent=vehicleLookupMessage||(state.vehicle?vehicleText()+' selected · showing listed applications. Review fitment details before ordering.':vehicleYears?.length?'Choose your exact configuration to see listed applications.':'Vehicle lookup will be available as the online catalog is added. Call us for help finding a part.');
-    $('clear-vehicle').hidden=!state.vehicle;
+    $('vehicle-label').textContent = garageVehicle
+      ? [garageVehicle.year, garageVehicle.make, garageVehicle.display_model, garageVehicle.configuration_label].filter(Boolean).join(' · ')
+      : 'My Garage · Add a vehicle';
+    $('selected-vehicle-status').textContent = vehicleLookupMessage ||
+      (garageVehicle ? `Saved: ${garageVehicle.year} ${garageVehicle.make} ${garageVehicle.display_model}${garageVehicle.configuration_label ? ' · ' + garageVehicle.configuration_label : ''}. Browse parts; compatibility must be confirmed separately.`
+        : vehicleYears?.length ? 'Select your vehicle to save it to My Garage. Parts compatibility is not yet verified.'
+          : 'Vehicle directory is unavailable. Call us for help finding a part.');
+    // Saved vehicles are managed on the dedicated My Garage page.
   }
   async function configureVehicle() {
     try {
-      if(vehicleYears===null){ const result=await vehicleFacet('years');vehicleYears=(result.values||[]).map(String); }
-      $('vehicle-year').innerHTML=optionList(vehicleYears,'Select year');$('vehicle-year').disabled=!vehicleYears.length;
-      if(state.vehicle)$('vehicle-year').value=String(state.vehicle.year);
-      await fillVehicleMakes(state.vehicle?.make);
-      if(state.vehicle){ await fillVehicleModels(state.vehicle.model);await fillVehicleConfigurations(state.vehicle.vehicle_key); }
-    }catch(error){vehicleLookupMessage=error.message;}
+      const result = await directoryLookup('/api/vehicle-directory');
+      vehicleYears = (result.years || []).map(String);
+      $('vehicle-year').innerHTML = optionList(vehicleYears, 'Select year');
+      $('vehicle-year').disabled = !vehicleYears.length;
+      vehicleLookupMessage = vehicleYears.length ? '' : 'No vehicles loaded in the reference directory.';
+    } catch (error) { vehicleLookupMessage = error.message; }
     renderVehicle();
   }
 
@@ -654,29 +710,33 @@
     $('mobile-menu-toggle')?.addEventListener('click', () => toggleMenu('mobile'));
     $('category-toggle')?.addEventListener('click', () => toggleMenu('category'));
 
-    $('vehicle-year')?.addEventListener('change', () => fillVehicleMakes(''));
-    $('vehicle-make')?.addEventListener('change', () => fillVehicleModels(''));
-    $('vehicle-model')?.addEventListener('change', () => fillVehicleConfigurations(''));
+    $('vehicle-year')?.addEventListener('change', fillVehicleMakes);
+    $('vehicle-make')?.addEventListener('change', fillVehicleModels);
+    $('vehicle-model')?.addEventListener('change', fillVehicleConfigurations);
     $('vehicle-form')?.addEventListener('submit', event => {
       event.preventDefault();
       if (!event.target.reportValidity()) return;
-      const v = vehicles.find(vehicle => vehicle.vehicle_key === $('vehicle-configuration').value);
-      if (!v) return;
-      state.vehicle = v;
-      persist(); renderVehicle(); renderProducts(); scrollToSection('catalog');
+      const vehicle = vehicleModels.find(v => v.reference_key === $('vehicle-model').value);
+      if (!vehicle) return;
+      const epa = vehicleConfigs.find(c => String(c.epa_id) === $('vehicle-configuration').value);
+      if (vehicleConfigs.length && !epa) { toast('Select your engine and configuration first.'); return; }
+      const selected = epa ? {
+        ...vehicle, epa_id: epa.epa_id,
+        configuration_label: [vehicleEngineLabel(epa), vehicleDriveLabel(epa), vehicleTransmissionLabel(epa)].join(' · ')
+      } : vehicle;
+      try { garageSaveVehicle(selected); }
+      catch (error) { toast(error.message || 'Could not save to My Garage.'); return; }
+      // EPA vehicle IDs are not catalog vehicle_key values. Never send EPA IDs as verified fitment filters.
+      state.vehicle = null;
+      persist();
+      vehicleLookupMessage = 'Vehicle saved to My Garage. Browsing all parts; compatibility has not been verified.';
+      renderVehicle(); renderProducts(); scrollToSection('catalog');
+      toast('Saved to My Garage. Parts compatibility must be confirmed before ordering.');
     });
     $('vehicle-header')?.addEventListener('click', () => { window.location.assign('/vehicle-directory'); });
     window.addEventListener('pageshow', renderVehicle);
-    $('clear-vehicle')?.addEventListener('click', () => {
-      state.vehicle = null;
-      if ($('vehicle-year')) $('vehicle-year').value = '';
-      if ($('vehicle-make')) $('vehicle-make').value = '';
-      fillVehicleModels('');
-      persist();
-      renderVehicle();
-      renderProducts();
-      toast('Saved vehicle cleared.');
-    });
+    window.addEventListener('storage', event => { if (event.key === GARAGE_KEY) renderVehicle(); });
+
 
     $('cart-open')?.addEventListener('click', () => { renderCart(); openDialog('cart-dialog'); });
     $('cart-close')?.addEventListener('click', () => closeDialog($('cart-dialog')));
