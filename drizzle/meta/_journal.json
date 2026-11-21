@@ -36,6 +36,13 @@
       "when": 1795285000000,
       "tag": "0004_supplier_feed_staging",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1795289000000,
+      "tag": "0005_epa_vehicle_config_staging",
+      "breakpoints": true
     }
   ]
 }

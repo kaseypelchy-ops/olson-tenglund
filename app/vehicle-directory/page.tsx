@@ -4,23 +4,32 @@ import { useEffect, useMemo, useState } from "react";
 
 type Vehicle = { reference_key: string; year: number; make: string; model: string; display_model: string; configuration_hint: string | null };
 type LibraryResult = { years: number[]; makes: string[]; total: number };
-type GarageState = { version: 1; vehicles: Vehicle[]; activeKey: string | null };
+type Config = { epa_id: number; engine_displacement_l: number | null; cylinders: number | null; engine_description: string | null; drive: string | null; transmission: string | null; transmission_description: string | null; fuel_type_primary: string | null; fuel_type: string | null; electric_motor: string | null; vehicle_class: string | null };
+type GarageVehicle = Vehicle & { epa_id?: number; configuration_label?: string };
+type GarageState = { version: 1; vehicles: GarageVehicle[]; activeKey: string | null };
 const STORAGE_KEY = "olson-tenglund.garage.v1";
 const emptyGarage: GarageState = { version: 1, vehicles: [], activeKey: null };
 const fieldStyle: React.CSSProperties = { width: "100%", padding: "13px 12px", borderRadius: 8, border: "1px solid #b8c6d2", background: "white", color: "#152333", fontSize: 15 };
 const primary: React.CSSProperties = { border: 0, borderRadius: 8, padding: "13px 18px", background: "#15324b", color: "white", fontWeight: 750, cursor: "pointer" };
 const secondary: React.CSSProperties = { border: "1px solid #bccbd8", borderRadius: 8, padding: "10px 15px", background: "white", color: "#15324b", fontWeight: 650, cursor: "pointer" };
-function label(v: Vehicle) { return `${v.year} ${v.make} ${v.display_model}${v.configuration_hint ? ` · ${v.configuration_hint}` : ""}`; }
-function validVehicle(v: unknown): v is Vehicle {
+function label(v: GarageVehicle) { return `${v.year} ${v.make} ${v.display_model}${v.configuration_hint ? ` · ${v.configuration_hint}` : ""}${v.configuration_label ? ` · ${v.configuration_label}` : ""}`; }
+function engineLabel(c: Config) {
+  const bits = [c.engine_displacement_l != null ? `${c.engine_displacement_l}L` : "", c.cylinders != null ? `${c.cylinders} cylinders` : "", c.engine_description || "", c.electric_motor || "", c.fuel_type_primary || c.fuel_type || ""].filter(Boolean);
+  return bits.join(" · ") || "Engine information not listed";
+}
+function driveLabel(c: Config) { return c.drive?.trim() || "Drivetrain not listed"; }
+function transLabel(c: Config) { return [c.transmission || c.transmission_description || "Transmission not listed", ...(c.transmission && c.transmission_description && c.transmission !== c.transmission_description ? [c.transmission_description] : [])].join(" · "); }
+function configuredVehicleKey(v: GarageVehicle) { return `${v.reference_key}:${v.epa_id ?? "reference"}`; }
+function validVehicle(v: unknown): v is GarageVehicle {
   if (!v || typeof v !== "object") return false;
-  const x = v as Partial<Vehicle>;
-  return typeof x.reference_key === "string" && /^[a-f0-9]{64}$/.test(x.reference_key) && Number.isInteger(x.year) && typeof x.make === "string" && typeof x.model === "string" && typeof x.display_model === "string" && (x.configuration_hint == null || typeof x.configuration_hint === "string");
+  const x = v as Partial<GarageVehicle>;
+  return (x.epa_id === undefined || (Number.isInteger(x.epa_id) && x.epa_id > 0)) && (x.configuration_label === undefined || typeof x.configuration_label === "string") && typeof x.reference_key === "string" && /^[a-f0-9]{64}$/.test(x.reference_key) && Number.isInteger(x.year) && typeof x.make === "string" && typeof x.model === "string" && typeof x.display_model === "string" && (x.configuration_hint == null || typeof x.configuration_hint === "string");
 }
 function readGarage(): GarageState {
   try {
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null") as Partial<GarageState> | null;
     const vehicles = Array.isArray(saved?.vehicles) ? saved.vehicles.filter(validVehicle).slice(0, 20) : [];
-    return { version: 1, vehicles, activeKey: vehicles.some(v => v.reference_key === saved?.activeKey) ? saved?.activeKey ?? null : vehicles[0]?.reference_key ?? null };
+    return { version: 1, vehicles, activeKey: vehicles.find(v => configuredVehicleKey(v) === saved?.activeKey || (v.epa_id == null && v.reference_key === saved?.activeKey)) ? configuredVehicleKey(vehicles.find(v => configuredVehicleKey(v) === saved?.activeKey || (v.epa_id == null && v.reference_key === saved?.activeKey))!) : vehicles[0] ? configuredVehicleKey(vehicles[0]) : null };
   } catch { return emptyGarage; }
 }
 export default function VehicleDirectory() {
@@ -33,6 +42,11 @@ export default function VehicleDirectory() {
   const [makes, setMakes] = useState<string[]>([]);
   const [models, setModels] = useState<Vehicle[]>([]);
   const [total, setTotal] = useState<number | null>(null);
+  const [configs, setConfigs] = useState<Config[]>([]);
+  const [configsBusy, setConfigsBusy] = useState(false);
+  const [engine, setEngine] = useState("");
+  const [drive, setDrive] = useState("");
+  const [epaId, setEpaId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -73,19 +87,41 @@ export default function VehicleDirectory() {
       .finally(() => { if (!controller.signal.aborted) setBusy(false); });
     return () => controller.abort();
   }, [year, make]);
+  useEffect(() => {
+    setConfigs([]); setEngine(""); setDrive(""); setEpaId("");
+    if (!referenceKey) return;
+    const controller = new AbortController(); setConfigsBusy(true); setError("");
+    fetch(`/api/vehicle-directory/configurations?referenceKey=${encodeURIComponent(referenceKey)}`, { signal: controller.signal })
+      .then(async r => { if (!r.ok) throw new Error("Unable to load engine/transmission options."); return r.json() as Promise<{ configurations: Config[] }>; })
+      .then(r => setConfigs(r.configurations || []))
+      .catch(e => { if (e.name !== "AbortError") setError(e.message); })
+      .finally(() => { if (!controller.signal.aborted) setConfigsBusy(false); });
+    return () => controller.abort();
+  }, [referenceKey]);
+  const engines = useMemo(() => [...new Map(configs.map(c => [engineLabel(c), engineLabel(c)])).values()], [configs]);
+  const engineConfigs = useMemo(() => configs.filter(c => engineLabel(c) === engine), [configs, engine]);
+  const drives = useMemo(() => [...new Map(engineConfigs.map(c => [driveLabel(c), driveLabel(c)])).values()], [engineConfigs]);
+  const driveConfigs = useMemo(() => engineConfigs.filter(c => driveLabel(c) === drive), [engineConfigs, drive]);
+  const selectedConfig = useMemo(() => driveConfigs.find(c => String(c.epa_id) === epaId), [driveConfigs, epaId]);
   const selected = useMemo(() => models.find(v => v.reference_key === referenceKey), [models, referenceKey]);
-  const active = garage.vehicles.find(v => v.reference_key === garage.activeKey);
+  const active = garage.vehicles.find(v => configuredVehicleKey(v) === garage.activeKey);
   function addVehicle() {
-    if (!selected) return;
-    if (garage.vehicles.some(v => v.reference_key === selected.reference_key)) {
-      setGarage(old => ({ ...old, activeKey: selected.reference_key })); setNotice("Vehicle is already saved. It is now your active vehicle."); return;
+    if (!selected || configsBusy) return;
+    if (configs.length && !selectedConfig) { setError("Select the engine, drivetrain and transmission before saving."); return; }
+    const vehicle: GarageVehicle = selectedConfig ? {
+      ...selected, epa_id: selectedConfig.epa_id,
+      configuration_label: `${engineLabel(selectedConfig)} · ${driveLabel(selectedConfig)} · ${transLabel(selectedConfig)}`
+    } : selected;
+    const key = configuredVehicleKey(vehicle);
+    if (garage.vehicles.some(v => configuredVehicleKey(v) === key)) {
+      setGarage(old => ({ ...old, activeKey: key })); setNotice("Vehicle is already saved. It is now your active vehicle."); return;
     }
     if (garage.vehicles.length >= 20) { setError("My Garage supports up to 20 vehicles on this device."); return; }
-    setGarage(old => ({ version: 1, vehicles: [...old.vehicles, selected], activeKey: selected.reference_key }));
-    setNotice(`${label(selected)} added to My Garage.`); setError("");
+    setGarage(old => ({ version: 1, vehicles: [...old.vehicles, vehicle], activeKey: key }));
+    setNotice(`${label(vehicle)} added to My Garage.`); setError("");
   }
   function removeVehicle(key: string) {
-    setGarage(old => { const vehicles = old.vehicles.filter(v => v.reference_key !== key); return { version: 1, vehicles, activeKey: old.activeKey === key ? vehicles[0]?.reference_key ?? null : old.activeKey }; });
+    setGarage(old => { const vehicles = old.vehicles.filter(v => configuredVehicleKey(v) !== key); return { version: 1, vehicles, activeKey: old.activeKey === key ? (vehicles[0] ? configuredVehicleKey(vehicles[0]) : null) : old.activeKey }; });
     setNotice("Vehicle removed from this browser's garage.");
   }
   return <main style={{ minHeight: "100vh", background: "#f2f5f7", color: "#182b3a", fontFamily: "Arial, sans-serif" }}>
@@ -96,11 +132,11 @@ export default function VehicleDirectory() {
     <div style={{ maxWidth: 1100, padding: "40px 20px 70px", margin: "auto" }}>
       <p style={{ textTransform: "uppercase", letterSpacing: 1.5, color: "#98660f", fontSize: 12, fontWeight: 800 }}>Vehicle directory &amp; saved vehicles</p>
       <h1 style={{ fontSize: "clamp(30px, 5vw, 46px)", margin: "10px 0 14px" }}>My Garage</h1>
-      <p style={{ maxWidth: 820, color: "#566978", lineHeight: 1.65, marginBottom: 30 }}>Choose your vehicle from our reference directory and keep it saved for your next visit. A saved year, make and model is <strong>not</strong> confirmation that a part fits. Engine, trim and other application requirements are checked separately.</p>
+      <p style={{ maxWidth: 820, color: "#566978", lineHeight: 1.65, marginBottom: 30 }}>Choose your year, make, model, engine, drivetrain and transmission where source data is available. Save the configuration for your next visit. EPA configuration details are reference information, <strong>not verified part compatibility</strong>.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 22, alignItems: "start" }}>
         <section style={{ background: "white", borderRadius: 12, padding: 24, border: "1px solid #d9e2e8" }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 24 }}>Add a vehicle</h2>
-          <p style={{ margin: "0 0 20px", color: "#617484", lineHeight: 1.5 }}>Select a year, make and model. Some source model names include drivetrain details.</p>
+          <p style={{ margin: "0 0 20px", color: "#617484", lineHeight: 1.5 }}>Select a year, make and model, then choose an available EPA configuration. Only combinations found in the imported source are offered.</p>
           <div style={{ display: "grid", gap: 18 }}>
             <label style={{ display: "grid", gap: 7, fontWeight: 700 }}>Year
               <select style={fieldStyle} value={year} onChange={e => { setYear(e.target.value); setMake(""); setReferenceKey(""); setNotice(""); }}><option value="">Select year</option>{years.map(y => <option key={y} value={String(y)}>{y}</option>)}</select>
@@ -111,8 +147,28 @@ export default function VehicleDirectory() {
             <label style={{ display: "grid", gap: 7, fontWeight: 700 }}>Model
               <select style={fieldStyle} value={referenceKey} disabled={!make || busy} onChange={e => { setReferenceKey(e.target.value); setNotice(""); }}><option value="">{busy ? "Loading models…" : "Select model"}</option>{models.map(m => <option key={m.reference_key} value={m.reference_key}>{m.display_model}{m.configuration_hint ? ` · ${m.configuration_hint}` : ""}</option>)}</select>
             </label>
-            {selected && <p style={{ margin: 0, padding: 12, background: "#f4f7fa", borderRadius: 8, fontSize: 14 }}>Selected: <strong>{label(selected)}</strong></p>}
-            <button style={{ ...primary, opacity: selected ? 1 : 0.5 }} disabled={!selected} onClick={addVehicle}>Save to My Garage</button>
+            {selected && configsBusy && <p role="status">Loading available EPA configurations…</p>}
+            {selected && !configsBusy && configs.length > 0 && <>
+              <label style={{ display: "grid", gap: 7, fontWeight: 700 }}>Engine / Fuel
+                <select style={fieldStyle} value={engine} onChange={e => { setEngine(e.target.value); setDrive(""); setEpaId(""); }}>
+                  <option value="">Select engine</option>{engines.map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 7, fontWeight: 700 }}>Drivetrain
+                <select style={fieldStyle} value={drive} disabled={!engine} onChange={e => { setDrive(e.target.value); setEpaId(""); }}>
+                  <option value="">Select drivetrain</option>{drives.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </label>
+              <label style={{ display: "grid", gap: 7, fontWeight: 700 }}>Transmission
+                <select style={fieldStyle} value={epaId} disabled={!drive} onChange={e => setEpaId(e.target.value)}>
+                  <option value="">Select transmission</option>{driveConfigs.map(c => <option key={c.epa_id} value={String(c.epa_id)}>{transLabel(c)} (EPA #{c.epa_id})</option>)}
+                </select>
+              </label>
+              <p style={{ margin: 0, padding: 12, background: "#fff9e7", borderRadius: 8, fontSize: 13 }}>Engine, drivetrain and transmission are from EPA fuel-economy data. Trim and manufacturer fitment may require additional verification.</p>
+            </>}
+            {selected && !configsBusy && configs.length === 0 && <p style={{ margin: 0, padding: 12, background: "#fff9e7", borderRadius: 8, fontSize: 13 }}>No linked EPA configuration is available for this model. You can still save Year / Make / Model only; part suitability remains unverified.</p>}
+            {selected && <p style={{ margin: 0, padding: 12, background: "#f4f7fa", borderRadius: 8, fontSize: 14 }}>Selected: <strong>{label(selected)}{selectedConfig ? ` · ${engineLabel(selectedConfig)} · ${driveLabel(selectedConfig)} · ${transLabel(selectedConfig)}` : ""}</strong></p>}
+            <button style={{ ...primary, opacity: selected && !configsBusy && (!configs.length || !!selectedConfig) ? 1 : 0.5 }} disabled={!selected || configsBusy || (!!configs.length && !selectedConfig)} onClick={addVehicle}>Save to My Garage</button>
           </div>
         </section>
         <section style={{ background: "white", borderRadius: 12, padding: 24, border: "1px solid #d9e2e8" }}>
@@ -120,11 +176,11 @@ export default function VehicleDirectory() {
           <p style={{ color: "#617484", margin: "0 0 18px", lineHeight: 1.5 }}>Saved in this browser on this device. Account sync is not enabled.</p>
           {active && <div style={{ background: "#edf4fa", border: "1px solid #bdd3e2", padding: 13, borderRadius: 9, marginBottom: 18 }}><div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "#346281" }}>ACTIVE VEHICLE</div><div style={{ fontWeight: 750, marginTop: 5 }}>{label(active)}</div></div>}
           {!loaded ? <p>Loading saved vehicles…</p> : garage.vehicles.length === 0 ? <p style={{ color: "#667783" }}>No saved vehicles yet. Choose a vehicle to get started.</p> :
-            <div style={{ display: "grid", gap: 12 }}>{garage.vehicles.map(v => <div key={v.reference_key} style={{ border: "1px solid #e0e6ec", padding: 13, borderRadius: 8 }}>
+            <div style={{ display: "grid", gap: 12 }}>{garage.vehicles.map(v => <div key={configuredVehicleKey(v)} style={{ border: "1px solid #e0e6ec", padding: 13, borderRadius: 8 }}>
               <div style={{ fontWeight: 750, marginBottom: 10 }}>{label(v)}</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {garage.activeKey !== v.reference_key && <button style={secondary} onClick={() => { setGarage(old => ({ ...old, activeKey: v.reference_key })); setNotice("Active vehicle updated."); }}>Make active</button>}
-                <button style={{ ...secondary, color: "#9b2633" }} onClick={() => removeVehicle(v.reference_key)}>Remove</button>
+                {garage.activeKey !== configuredVehicleKey(v) && <button style={secondary} onClick={() => { setGarage(old => ({ ...old, activeKey: configuredVehicleKey(v) })); setNotice("Active vehicle updated."); }}>Make active</button>}
+                <button style={{ ...secondary, color: "#9b2633" }} onClick={() => removeVehicle(configuredVehicleKey(v))}>Remove</button>
               </div>
             </div>)}</div>}
           <Link href="/#catalog" style={{ display: "inline-block", marginTop: 22, color: "#125a84", fontWeight: 700 }}>Browse parts</Link>
@@ -135,7 +191,7 @@ export default function VehicleDirectory() {
       <section style={{ marginTop: 30, padding: "22px 24px", border: "1px solid #d9e2e8", background: "#fff", borderRadius: 12, lineHeight: 1.6 }}>
         <h2 style={{ fontSize: 19, marginTop: 0 }}>Vehicle reference coverage</h2>
         <p style={{ marginBottom: 8 }}>The directory currently contains {total == null ? "the imported reference records" : `${total.toLocaleString()} reference entries`}. Available years and models depend on which reference files have been imported.</p>
-        <p style={{ marginBottom: 0 }}>The original EPA reference file covers 1984–2026, not every car ever sold. Model labels can include duplicates or drivetrain variants. Choosing a vehicle in My Garage does not automatically filter the product catalog by verified compatibility. Use the storefront's verified vehicle finder or contact the parts counter to confirm a specific part.</p>
+        <p style={{ marginBottom: 0 }}>The reference directory is primarily sourced from EPA 1984–2026 year/make/model records; additional EPA configurations can exist outside that range. Engine, drive and transmission entries are EPA descriptive candidates only. Choosing a vehicle in My Garage does not automatically filter the product catalog by verified compatibility. Use the storefront's verified vehicle finder or contact the parts counter to confirm a specific part.</p>
       </section>
     </div>
   </main>;

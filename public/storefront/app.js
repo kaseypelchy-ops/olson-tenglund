@@ -297,7 +297,7 @@
   }
   function renderVehicle() {
     const garageVehicle = garageActiveVehicle();
-    $('vehicle-label').textContent=garageVehicle ? [garageVehicle.year,garageVehicle.make,garageVehicle.display_model].join(' ') : 'My Garage · Add a vehicle';
+    $('vehicle-label').textContent=garageVehicle ? [garageVehicle.year,garageVehicle.make,garageVehicle.display_model,garageVehicle.configuration_label].filter(Boolean).join(' · ') : 'My Garage · Add a vehicle';
     $('selected-vehicle-status').textContent=vehicleLookupMessage||(state.vehicle?vehicleText()+' selected · showing listed applications. Review fitment details before ordering.':vehicleYears?.length?'Choose your exact configuration to see listed applications.':'Vehicle lookup will be available as the online catalog is added. Call us for help finding a part.');
     $('clear-vehicle').hidden=!state.vehicle;
   }
