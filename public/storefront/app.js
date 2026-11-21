@@ -24,6 +24,11 @@
     filters: 'Filters', oil: 'Oil & fluids', wipers: 'Wipers & visibility', ignition: 'Ignition'
   };
   const STORE_KEY = 'olson-tenglund.catalog.v2';
+  const GARAGE_KEY = 'olson-tenglund.garage.v1';
+  function garageActiveVehicle() {
+    try { const saved = JSON.parse(localStorage.getItem(GARAGE_KEY) || 'null'); return saved?.vehicles?.find(v => v.reference_key === saved.activeKey) || null; }
+    catch (_) { return null; }
+  }
   const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const byId = new Map(products.map((p) => [p.id, p]));
   const $ = (id) => document.getElementById(id);
@@ -291,7 +296,8 @@
     } catch(error){vehicleLookupMessage=error.message;renderVehicle();}
   }
   function renderVehicle() {
-    $('vehicle-label').textContent=state.vehicle?vehicleText():'Add your vehicle';
+    const garageVehicle = garageActiveVehicle();
+    $('vehicle-label').textContent=garageVehicle ? [garageVehicle.year,garageVehicle.make,garageVehicle.display_model].join(' ') : 'My Garage · Add a vehicle';
     $('selected-vehicle-status').textContent=vehicleLookupMessage||(state.vehicle?vehicleText()+' selected · showing listed applications. Review fitment details before ordering.':vehicleYears?.length?'Choose your exact configuration to see listed applications.':'Vehicle lookup will be available as the online catalog is added. Call us for help finding a part.');
     $('clear-vehicle').hidden=!state.vehicle;
   }
@@ -659,10 +665,8 @@
       state.vehicle = v;
       persist(); renderVehicle(); renderProducts(); scrollToSection('catalog');
     });
-    $('vehicle-header')?.addEventListener('click', () => {
-      scrollToSection('vehicle-finder');
-      $('vehicle-year')?.focus({ preventScroll: true });
-    });
+    $('vehicle-header')?.addEventListener('click', () => { window.location.assign('/vehicle-directory'); });
+    window.addEventListener('pageshow', renderVehicle);
     $('clear-vehicle')?.addEventListener('click', () => {
       state.vehicle = null;
       if ($('vehicle-year')) $('vehicle-year').value = '';
