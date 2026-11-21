@@ -1,4 +1,4 @@
-﻿import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { getActor, getDatabase, readJson } from "./server";
 import { InventoryError } from "./validation";
 
@@ -78,7 +78,7 @@ function statementsFor(db: ReturnType<typeof getDatabase>, items: Item[], now:st
 }
 export async function importSupplierCatalog(request: Request) {
   const body=await readJson(request);
-  if(!Array.isArray(body.rows)||body.rows.length<1||body.rows.length>250) throw new InventoryError("Use 1â€“250 supplier catalog records per batch.",422);
+  if(!Array.isArray(body.rows)||body.rows.length<1||body.rows.length>250) throw new InventoryError("Use 1–250 supplier catalog records per batch.",422);
   const checked:Item[]=[];const errors:{row:number;message:string}[]=[];const keys=new Set<string>();
   for(let i=0;i<body.rows.length;i++){
     try {if(!body.rows[i]||typeof body.rows[i]!=="object"||Array.isArray(body.rows[i]))throw new Error("Row must contain columns.");
@@ -124,6 +124,15 @@ export async function reviewSupplierCatalog(request: Request) {
   if(!results[0].results.length)throw new InventoryError("Supplier record was not found.",404);
   return {stage_key:key,status};
 }
+/** Default sellable unit for supplier-promoted products. Keeps one item
+ * per SKU and does not imply a retail price or a stock balance. */
+export function suggestedInternalSku(brand: string, mpn: string, productKey: string): string {
+  const safe = (value: string) => value.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const base = `OT-${safe(brand).slice(0, 24)}-${safe(mpn).slice(0, 42)}-EA`;
+  // If source identifiers contain no ordinary alphanumerics, use stable identity.
+  return (!safe(brand) || !safe(mpn)) ? `OT-${createHash("sha256").update(productKey).digest("hex").slice(0, 18).toUpperCase()}-EA` : base;
+}
+
 export async function promoteSupplierCatalog(request:Request) {
   const body=await readJson(request),key=text(body.stage_key);
   if(!/^[0-9a-f]{64}$/.test(key))throw new InventoryError("Choose a valid supplier catalog record.",422);
@@ -131,18 +140,47 @@ export async function promoteSupplierCatalog(request:Request) {
   const row=await db.prepare("SELECT * FROM inv_supplier_catalog_stage WHERE stage_key=?").bind(key).first<Record<string,unknown>>();
   if(!row)throw new InventoryError("Supplier catalog record not found.",404);
   if(row.review_status!=="reviewed")throw new InventoryError("Review this product before adding it to the working catalog.",409);
-  if(row.linked_product_key)return {product_key:row.linked_product_key,action:"already_linked"};
   const norm=(x:unknown)=>normalize(String(x??""));
-  const existing=await db.prepare("SELECT product_key FROM inv_products WHERE brand_normalized=? AND mpn_normalized=?").bind(norm(row.brand),norm(row.manufacturer_part_number)).first<{product_key:string}>();
-  const productKey=existing?.product_key||`SUP-${key.slice(0,24)}`;
+  const existing=await db.prepare("SELECT product_key FROM inv_products WHERE brand_normalized=? AND mpn_normalized=?")
+    .bind(norm(row.brand),norm(row.manufacturer_part_number)).first<{product_key:string}>();
+  const linkedKey=text(row.linked_product_key);
+  if(linkedKey && existing?.product_key && linkedKey!==existing.product_key)
+    throw new InventoryError("Supplier reference conflicts with a linked product. Review the record before continuing.",409);
+  const productKey=linkedKey||existing?.product_key||`SUP-${key.slice(0,24)}`;
+  const alreadyHasSku=await db.prepare("SELECT internal_sku FROM inv_skus WHERE product_key=? LIMIT 1")
+    .bind(productKey).first<{internal_sku:string}>();
+  let sku:string|null=alreadyHasSku?.internal_sku||null;
   const actions=[];
-  if(!existing)actions.push(db.prepare(`INSERT INTO inv_products(product_key,title,brand,manufacturer_part_number,category,description,base_unit_code,fitment_mode,publication_status,image_url,source_name,source_reference,brand_normalized,mpn_normalized,revision,created_at,updated_at)
-    VALUES(?,?,?,?,?,?,'each','unknown','draft',?,?,?,?,?,1,?,?)`).bind(productKey,String(row.title ?? ""),String(row.brand ?? ""),String(row.manufacturer_part_number ?? ""),String(row.category ?? ""),row.description == null ? null : String(row.description),row.image_url == null ? null : String(row.image_url),row.source_name == null ? null : String(row.source_name),row.source_reference == null ? null : String(row.source_reference),norm(row.brand),norm(row.manufacturer_part_number),now,now));
-  actions.push(db.prepare("UPDATE inv_supplier_catalog_stage SET linked_product_key=? WHERE stage_key=? AND linked_product_key IS NULL AND review_status='reviewed' RETURNING stage_key").bind(productKey,key));
-  actions.push(db.prepare("INSERT INTO inv_audit_log(id,action,entity,record_key,summary,actor,created_at) VALUES(?,?,?,?,?,?,?)").bind(randomUUID(),"supplier_catalog_promote","supplier_catalog",key,`Linked supplier product to draft/existing product ${productKey}.`,actor,now));
-  try {const results=await db.batch(actions);
-    const idx=existing?0:1;if(!results[idx].results.length)throw new InventoryError("Catalog changed during approval. Refresh and retry.",409);
-  }catch(e){if(e instanceof InventoryError)throw e;throw new InventoryError("This product may already exist or was changed concurrently. Refresh and review; no overwrite was performed.",409);}
-  return {product_key:productKey,action:existing?"linked_existing":"created_draft",publicationStatus:existing?"unchanged":"draft",sellingSkuCreated:false,stockChanged:0};
+  const needsProduct=!linkedKey&&!existing;
+  if(needsProduct)actions.push(db.prepare(`INSERT INTO inv_products(product_key,title,brand,manufacturer_part_number,category,description,base_unit_code,fitment_mode,publication_status,image_url,source_name,source_reference,brand_normalized,mpn_normalized,revision,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,'each','unknown','draft',?,?,?,?,?,1,?,?)`)
+    .bind(productKey,text(row.title),text(row.brand),text(row.manufacturer_part_number),text(row.category),row.description==null?null:text(row.description),row.image_url==null?null:text(row.image_url),row.source_name==null?null:text(row.source_name),row.source_reference==null?null:text(row.source_reference),norm(row.brand),norm(row.manufacturer_part_number),now,now));
+  if(!sku){
+    const proposed=suggestedInternalSku(text(row.brand),text(row.manufacturer_part_number),productKey);
+    const occupying=await db.prepare("SELECT product_key FROM inv_skus WHERE internal_sku=?").bind(proposed).first<{product_key:string}>();
+    sku=occupying&&occupying.product_key!==productKey
+      ? `${proposed.slice(0,88)}-${createHash("sha256").update(productKey).digest("hex").slice(0,10).toUpperCase()}`
+      : proposed;
+    // The insert guard is evaluated in the write transaction: a concurrent
+    // promotion cannot create a second SKU on the same product.
+    actions.push(db.prepare(`INSERT INTO inv_skus(internal_sku,product_key,selling_unit,base_units_per_selling_unit_milli,condition,barcode,reorder_point_milli,status,notes,revision,created_at,updated_at)
+      SELECT ?,?,'each',1000,'new',?,0,'active','Auto-created from reviewed supplier catalog; confirm packaging and barcode.',1,?,?
+      WHERE NOT EXISTS(SELECT 1 FROM inv_skus WHERE product_key=?)`)
+      .bind(sku,productKey,row.barcode==null?null:text(row.barcode),now,now,productKey));
+  }
+  if(!linkedKey)actions.push(db.prepare("UPDATE inv_supplier_catalog_stage SET linked_product_key=? WHERE stage_key=? AND linked_product_key IS NULL AND review_status='reviewed' RETURNING stage_key").bind(productKey,key));
+  actions.push(db.prepare("INSERT INTO inv_audit_log(id,action,entity,record_key,summary,actor,created_at) VALUES(?,?,?,?,?,?,?)")
+    .bind(randomUUID(),"supplier_catalog_promote","supplier_catalog",key,`Linked supplier record to product ${productKey}; ensured a default SKU if needed.`,actor,now));
+  try {
+    const results=await db.batch(actions);
+    const updateIndex=needsProduct? (alreadyHasSku?1:2) : (alreadyHasSku?0:1);
+    if(!linkedKey&&!results[updateIndex].results.length)
+      throw new InventoryError("Catalog changed during approval. Refresh and retry.",409);
+  }catch(e){if(e instanceof InventoryError)throw e;throw new InventoryError("The product or selling SKU may have been created concurrently. Refresh and retry; existing records were not overwritten.",409);}
+  const resultingSku=await db.prepare("SELECT internal_sku FROM inv_skus WHERE product_key=? ORDER BY created_at,internal_sku LIMIT 1")
+    .bind(productKey).first<{internal_sku:string}>();
+  return {product_key:productKey,internal_sku:resultingSku?.internal_sku||null,
+    action:linkedKey?"already_linked":existing?"linked_existing":"created_draft",
+    publicationStatus:needsProduct?"draft":"unchanged",
+    sellingSkuCreated:!alreadyHasSku&&Boolean(resultingSku),stockChanged:0};
 }
-
