@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1795223584993,
+      "tag": "0000_worried_blur",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795224555752,
+      "tag": "0001_mean_captain_universe",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795225568213,
+      "tag": "0002_chunky_squirrel_girl",
+      "breakpoints": true
+    }
+  ]
+}

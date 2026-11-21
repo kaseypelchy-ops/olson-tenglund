@@ -1,0 +1,41 @@
+[
+  {
+    "location_key": "COUDERSPORT",
+    "name": "Coudersport",
+    "type": "store",
+    "status": "active",
+    "address_line1": null,
+    "address_line2": null,
+    "city": "Coudersport",
+    "state": "PA",
+    "postal_code": null,
+    "phone": null,
+    "store_hours": null
+  },
+  {
+    "location_key": "PORT-ALLEGANY",
+    "name": "Port Allegany",
+    "type": "store",
+    "status": "active",
+    "address_line1": "303 N Main Street",
+    "address_line2": null,
+    "city": "Port Allegany",
+    "state": "PA",
+    "postal_code": "16743",
+    "phone": "(814) 642-2517",
+    "store_hours": null
+  },
+  {
+    "location_key": "SMETHPORT",
+    "name": "Smethport",
+    "type": "store",
+    "status": "active",
+    "address_line1": null,
+    "address_line2": null,
+    "city": "Smethport",
+    "state": "PA",
+    "postal_code": null,
+    "phone": null,
+    "store_hours": null
+  }
+]

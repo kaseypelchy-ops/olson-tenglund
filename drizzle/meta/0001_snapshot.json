@@ -1,0 +1,1735 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "e79d698a-c956-4812-b55e-6b1be1230ef3",
+  "prevId": "7368fb07-e436-4f83-b1cd-df231a1a1eb7",
+  "tables": {
+    "inv_accounts": {
+      "name": "inv_accounts",
+      "columns": {
+        "account_key": {
+          "name": "account_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company": {
+          "name": "company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contact_name": {
+          "name": "contact_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "price_list": {
+          "name": "price_list",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'trade'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_accounts_status_enum": {
+          "name": "inv_accounts_status_enum",
+          "value": "\"inv_accounts\".\"status\" in ('pending','approved','suspended','closed')"
+        }
+      }
+    },
+    "inv_attributes": {
+      "name": "inv_attributes",
+      "columns": {
+        "attribute_key": {
+          "name": "attribute_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_key": {
+          "name": "product_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "name_normalized": {
+          "name": "name_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unit_normalized": {
+          "name": "unit_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_attributes_identity": {
+          "name": "inv_attributes_identity",
+          "columns": [
+            "product_key",
+            "name_normalized",
+            "unit_normalized"
+          ],
+          "isUnique": true
+        },
+        "inv_attributes_product_idx": {
+          "name": "inv_attributes_product_idx",
+          "columns": [
+            "product_key"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inv_attributes_product_key_inv_products_product_key_fk": {
+          "name": "inv_attributes_product_key_inv_products_product_key_fk",
+          "tableFrom": "inv_attributes",
+          "tableTo": "inv_products",
+          "columnsFrom": [
+            "product_key"
+          ],
+          "columnsTo": [
+            "product_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "inv_audit_log": {
+      "name": "inv_audit_log",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entity": {
+          "name": "entity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "record_key": {
+          "name": "record_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_audit_created_idx": {
+          "name": "inv_audit_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "inv_fitments": {
+      "name": "inv_fitments",
+      "columns": {
+        "fitment_key": {
+          "name": "fitment_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_key": {
+          "name": "product_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vehicle_key": {
+          "name": "vehicle_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "required_base_units_milli": {
+          "name": "required_base_units_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "restrictions": {
+          "name": "restrictions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "restriction_status": {
+          "name": "restriction_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'unresolved'"
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_fitments_product_idx": {
+          "name": "inv_fitments_product_idx",
+          "columns": [
+            "product_key"
+          ],
+          "isUnique": false
+        },
+        "inv_fitment_vehicle_idx": {
+          "name": "inv_fitment_vehicle_idx",
+          "columns": [
+            "vehicle_key"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inv_fitments_product_key_inv_products_product_key_fk": {
+          "name": "inv_fitments_product_key_inv_products_product_key_fk",
+          "tableFrom": "inv_fitments",
+          "tableTo": "inv_products",
+          "columnsFrom": [
+            "product_key"
+          ],
+          "columnsTo": [
+            "product_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inv_fitments_vehicle_key_inv_vehicles_vehicle_key_fk": {
+          "name": "inv_fitments_vehicle_key_inv_vehicles_vehicle_key_fk",
+          "tableFrom": "inv_fitments",
+          "tableTo": "inv_vehicles",
+          "columnsFrom": [
+            "vehicle_key"
+          ],
+          "columnsTo": [
+            "vehicle_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_fitments_required_base_units_milli_min": {
+          "name": "inv_fitments_required_base_units_milli_min",
+          "value": "\"inv_fitments\".\"required_base_units_milli\" is null or \"inv_fitments\".\"required_base_units_milli\" >= 1"
+        },
+        "inv_fitments_review_status_enum": {
+          "name": "inv_fitments_review_status_enum",
+          "value": "\"inv_fitments\".\"review_status\" in ('draft','verified','rejected')"
+        },
+        "inv_fitments_restriction_status_enum": {
+          "name": "inv_fitments_restriction_status_enum",
+          "value": "\"inv_fitments\".\"restriction_status\" in ('unresolved','none','resolved')"
+        }
+      }
+    },
+    "inv_import_batches": {
+      "name": "inv_import_batches",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "entity": {
+          "name": "entity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "filename": {
+          "name": "filename",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'preview'"
+        },
+        "mapping_json": {
+          "name": "mapping_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rows_json": {
+          "name": "rows_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "valid_count": {
+          "name": "valid_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "error_count": {
+          "name": "error_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "total_count": {
+          "name": "total_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "summary_json": {
+          "name": "summary_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "applied_at": {
+          "name": "applied_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_import_created_idx": {
+          "name": "inv_import_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "inv_locations": {
+      "name": "inv_locations",
+      "columns": {
+        "location_key": {
+          "name": "location_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'store'"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "address_line1": {
+          "name": "address_line1",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "address_line2": {
+          "name": "address_line2",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "postal_code": {
+          "name": "postal_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "store_hours": {
+          "name": "store_hours",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_locations_type_enum": {
+          "name": "inv_locations_type_enum",
+          "value": "\"inv_locations\".\"type\" in ('store','warehouse','bin')"
+        },
+        "inv_locations_status_enum": {
+          "name": "inv_locations_status_enum",
+          "value": "\"inv_locations\".\"status\" in ('active','archived')"
+        }
+      }
+    },
+    "inv_offers": {
+      "name": "inv_offers",
+      "columns": {
+        "offer_key": {
+          "name": "offer_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "supplier_key": {
+          "name": "supplier_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "internal_sku": {
+          "name": "internal_sku",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "supplier_part_number": {
+          "name": "supplier_part_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "unit_cost_cents": {
+          "name": "unit_cost_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "purchase_pack_sell_units_milli": {
+          "name": "purchase_pack_sell_units_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1000
+        },
+        "minimum_purchase_packs_milli": {
+          "name": "minimum_purchase_packs_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1000
+        },
+        "reported_available_milli": {
+          "name": "reported_available_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "availability_observed_at": {
+          "name": "availability_observed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lead_time_days": {
+          "name": "lead_time_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_offer_supplier_part": {
+          "name": "inv_offer_supplier_part",
+          "columns": [
+            "supplier_key",
+            "supplier_part_number"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "inv_offers_supplier_key_inv_suppliers_supplier_key_fk": {
+          "name": "inv_offers_supplier_key_inv_suppliers_supplier_key_fk",
+          "tableFrom": "inv_offers",
+          "tableTo": "inv_suppliers",
+          "columnsFrom": [
+            "supplier_key"
+          ],
+          "columnsTo": [
+            "supplier_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inv_offers_internal_sku_inv_skus_internal_sku_fk": {
+          "name": "inv_offers_internal_sku_inv_skus_internal_sku_fk",
+          "tableFrom": "inv_offers",
+          "tableTo": "inv_skus",
+          "columnsFrom": [
+            "internal_sku"
+          ],
+          "columnsTo": [
+            "internal_sku"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_offers_unit_cost_cents_min": {
+          "name": "inv_offers_unit_cost_cents_min",
+          "value": "\"inv_offers\".\"unit_cost_cents\" is null or \"inv_offers\".\"unit_cost_cents\" >= 0"
+        },
+        "inv_offers_purchase_pack_sell_units_milli_min": {
+          "name": "inv_offers_purchase_pack_sell_units_milli_min",
+          "value": "\"inv_offers\".\"purchase_pack_sell_units_milli\" is null or \"inv_offers\".\"purchase_pack_sell_units_milli\" >= 1"
+        },
+        "inv_offers_minimum_purchase_packs_milli_min": {
+          "name": "inv_offers_minimum_purchase_packs_milli_min",
+          "value": "\"inv_offers\".\"minimum_purchase_packs_milli\" is null or \"inv_offers\".\"minimum_purchase_packs_milli\" >= 1"
+        },
+        "inv_offers_reported_available_milli_min": {
+          "name": "inv_offers_reported_available_milli_min",
+          "value": "\"inv_offers\".\"reported_available_milli\" is null or \"inv_offers\".\"reported_available_milli\" >= 0"
+        },
+        "inv_offers_lead_time_days_min": {
+          "name": "inv_offers_lead_time_days_min",
+          "value": "\"inv_offers\".\"lead_time_days\" is null or \"inv_offers\".\"lead_time_days\" >= 0"
+        },
+        "inv_offers_status_enum": {
+          "name": "inv_offers_status_enum",
+          "value": "\"inv_offers\".\"status\" in ('active','archived')"
+        }
+      }
+    },
+    "inv_prices": {
+      "name": "inv_prices",
+      "columns": {
+        "price_key": {
+          "name": "price_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "price_list": {
+          "name": "price_list",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'retail'"
+        },
+        "internal_sku": {
+          "name": "internal_sku",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "minimum_quantity_milli": {
+          "name": "minimum_quantity_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1000
+        },
+        "unit_price_cents": {
+          "name": "unit_price_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "core_charge_cents": {
+          "name": "core_charge_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "valid_from": {
+          "name": "valid_from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "valid_to": {
+          "name": "valid_to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_price_lookup_idx": {
+          "name": "inv_price_lookup_idx",
+          "columns": [
+            "price_list",
+            "internal_sku",
+            "minimum_quantity_milli"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inv_prices_internal_sku_inv_skus_internal_sku_fk": {
+          "name": "inv_prices_internal_sku_inv_skus_internal_sku_fk",
+          "tableFrom": "inv_prices",
+          "tableTo": "inv_skus",
+          "columnsFrom": [
+            "internal_sku"
+          ],
+          "columnsTo": [
+            "internal_sku"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_prices_minimum_quantity_milli_min": {
+          "name": "inv_prices_minimum_quantity_milli_min",
+          "value": "\"inv_prices\".\"minimum_quantity_milli\" is null or \"inv_prices\".\"minimum_quantity_milli\" >= 1"
+        },
+        "inv_prices_unit_price_cents_min": {
+          "name": "inv_prices_unit_price_cents_min",
+          "value": "\"inv_prices\".\"unit_price_cents\" is null or \"inv_prices\".\"unit_price_cents\" >= 0"
+        },
+        "inv_prices_core_charge_cents_min": {
+          "name": "inv_prices_core_charge_cents_min",
+          "value": "\"inv_prices\".\"core_charge_cents\" is null or \"inv_prices\".\"core_charge_cents\" >= 0"
+        },
+        "inv_prices_status_enum": {
+          "name": "inv_prices_status_enum",
+          "value": "\"inv_prices\".\"status\" in ('active','archived')"
+        },
+        "inv_price_dates": {
+          "name": "inv_price_dates",
+          "value": "\"inv_prices\".\"valid_from\" is null or \"inv_prices\".\"valid_to\" is null or \"inv_prices\".\"valid_to\" >= \"inv_prices\".\"valid_from\""
+        }
+      }
+    },
+    "inv_products": {
+      "name": "inv_products",
+      "columns": {
+        "product_key": {
+          "name": "product_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "brand": {
+          "name": "brand",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "manufacturer_part_number": {
+          "name": "manufacturer_part_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "base_unit_code": {
+          "name": "base_unit_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'each'"
+        },
+        "fitment_mode": {
+          "name": "fitment_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'unknown'"
+        },
+        "publication_status": {
+          "name": "publication_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'draft'"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "brand_normalized": {
+          "name": "brand_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mpn_normalized": {
+          "name": "mpn_normalized",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_products_identity": {
+          "name": "inv_products_identity",
+          "columns": [
+            "brand_normalized",
+            "mpn_normalized"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_products_category_enum": {
+          "name": "inv_products_category_enum",
+          "value": "\"inv_products\".\"category\" in ('brakes','batteries','filters','oil','wipers','ignition','electrical','engine','suspension','drivetrain','tools','accessories','other')"
+        },
+        "inv_products_fitment_mode_enum": {
+          "name": "inv_products_fitment_mode_enum",
+          "value": "\"inv_products\".\"fitment_mode\" in ('unknown','vehicle_specific','specification_based','non_vehicle_specific')"
+        },
+        "inv_products_publication_status_enum": {
+          "name": "inv_products_publication_status_enum",
+          "value": "\"inv_products\".\"publication_status\" in ('draft','published','archived')"
+        }
+      }
+    },
+    "inv_skus": {
+      "name": "inv_skus",
+      "columns": {
+        "internal_sku": {
+          "name": "internal_sku",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_key": {
+          "name": "product_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "selling_unit": {
+          "name": "selling_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'each'"
+        },
+        "base_units_per_selling_unit_milli": {
+          "name": "base_units_per_selling_unit_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1000
+        },
+        "condition": {
+          "name": "condition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'new'"
+        },
+        "barcode": {
+          "name": "barcode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reorder_point_milli": {
+          "name": "reorder_point_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_skus_product_idx": {
+          "name": "inv_skus_product_idx",
+          "columns": [
+            "product_key"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inv_skus_product_key_inv_products_product_key_fk": {
+          "name": "inv_skus_product_key_inv_products_product_key_fk",
+          "tableFrom": "inv_skus",
+          "tableTo": "inv_products",
+          "columnsFrom": [
+            "product_key"
+          ],
+          "columnsTo": [
+            "product_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_skus_base_units_per_selling_unit_milli_min": {
+          "name": "inv_skus_base_units_per_selling_unit_milli_min",
+          "value": "\"inv_skus\".\"base_units_per_selling_unit_milli\" is null or \"inv_skus\".\"base_units_per_selling_unit_milli\" >= 1"
+        },
+        "inv_skus_condition_enum": {
+          "name": "inv_skus_condition_enum",
+          "value": "\"inv_skus\".\"condition\" in ('new','remanufactured','used')"
+        },
+        "inv_skus_reorder_point_milli_min": {
+          "name": "inv_skus_reorder_point_milli_min",
+          "value": "\"inv_skus\".\"reorder_point_milli\" is null or \"inv_skus\".\"reorder_point_milli\" >= 0"
+        },
+        "inv_skus_status_enum": {
+          "name": "inv_skus_status_enum",
+          "value": "\"inv_skus\".\"status\" in ('active','archived')"
+        }
+      }
+    },
+    "inv_stock_events": {
+      "name": "inv_stock_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "internal_sku": {
+          "name": "internal_sku",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "location_key": {
+          "name": "location_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'adjustment'"
+        },
+        "opening_position_key": {
+          "name": "opening_position_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "quantity_milli": {
+          "name": "quantity_milli",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "disposition": {
+          "name": "disposition",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_stock_events_idempotency_key_unique": {
+          "name": "inv_stock_events_idempotency_key_unique",
+          "columns": [
+            "idempotency_key"
+          ],
+          "isUnique": true
+        },
+        "inv_stock_events_opening_position_key_unique": {
+          "name": "inv_stock_events_opening_position_key_unique",
+          "columns": [
+            "opening_position_key"
+          ],
+          "isUnique": true
+        },
+        "inv_stock_position_idx": {
+          "name": "inv_stock_position_idx",
+          "columns": [
+            "internal_sku",
+            "location_key",
+            "disposition"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "inv_stock_events_internal_sku_inv_skus_internal_sku_fk": {
+          "name": "inv_stock_events_internal_sku_inv_skus_internal_sku_fk",
+          "tableFrom": "inv_stock_events",
+          "tableTo": "inv_skus",
+          "columnsFrom": [
+            "internal_sku"
+          ],
+          "columnsTo": [
+            "internal_sku"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "inv_stock_events_location_key_inv_locations_location_key_fk": {
+          "name": "inv_stock_events_location_key_inv_locations_location_key_fk",
+          "tableFrom": "inv_stock_events",
+          "tableTo": "inv_locations",
+          "columnsFrom": [
+            "location_key"
+          ],
+          "columnsTo": [
+            "location_key"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_stock_delta_valid": {
+          "name": "inv_stock_delta_valid",
+          "value": "(\"inv_stock_events\".\"event_type\"='opening' and \"inv_stock_events\".\"quantity_milli\" >= 0 and \"inv_stock_events\".\"opening_position_key\" is not null) or (\"inv_stock_events\".\"event_type\"='adjustment' and \"inv_stock_events\".\"quantity_milli\" <> 0 and \"inv_stock_events\".\"opening_position_key\" is null)"
+        },
+        "inv_stock_disposition_enum": {
+          "name": "inv_stock_disposition_enum",
+          "value": "\"inv_stock_events\".\"disposition\" in ('sellable','damaged','quarantine','core')"
+        }
+      }
+    },
+    "inv_suppliers": {
+      "name": "inv_suppliers",
+      "columns": {
+        "supplier_key": {
+          "name": "supplier_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "company": {
+          "name": "company",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contact_name": {
+          "name": "contact_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "phone": {
+          "name": "phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_suppliers_status_enum": {
+          "name": "inv_suppliers_status_enum",
+          "value": "\"inv_suppliers\".\"status\" in ('active','archived')"
+        }
+      }
+    },
+    "inv_vehicles": {
+      "name": "inv_vehicles",
+      "columns": {
+        "vehicle_key": {
+          "name": "vehicle_key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "make": {
+          "name": "make",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "engine": {
+          "name": "engine",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trim": {
+          "name": "trim",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "drivetrain": {
+          "name": "drivetrain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "transmission": {
+          "name": "transmission",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "market": {
+          "name": "market",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'US'"
+        },
+        "configuration_status": {
+          "name": "configuration_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'partial'"
+        },
+        "source_name": {
+          "name": "source_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "source_reference": {
+          "name": "source_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "inv_vehicle_lookup_idx": {
+          "name": "inv_vehicle_lookup_idx",
+          "columns": [
+            "year",
+            "make",
+            "model"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "inv_vehicles_year_min": {
+          "name": "inv_vehicles_year_min",
+          "value": "\"inv_vehicles\".\"year\" is null or \"inv_vehicles\".\"year\" >= 1886"
+        },
+        "inv_vehicles_configuration_status_enum": {
+          "name": "inv_vehicles_configuration_status_enum",
+          "value": "\"inv_vehicles\".\"configuration_status\" in ('partial','reviewed','archived')"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
