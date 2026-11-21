@@ -197,3 +197,14 @@ export const auditLog = sqliteTable("inv_audit_log", {
   id: text("id").primaryKey().notNull(), action: text("action").notNull(), entity: text("entity").notNull(), record_key: text("record_key"),
   summary: text("summary").notNull(), actor: text("actor").notNull(), created_at: text("created_at").notNull(),
 }, t => [index("inv_audit_created_idx").on(t.created_at)]);
+
+// Broad year/make/model references: deliberately distinct from verified vehicle
+// configurations and fitment applications. No foreign key to inv_fitments.
+export const vehicleReferences = sqliteTable("inv_vehicle_reference", {
+ reference_key: text("reference_key").notNull().primaryKey(),
+ year: integer("year").notNull(), make: text("make").notNull(), model: text("model").notNull(),
+ display_model: text("display_model").notNull(), configuration_hint: text("configuration_hint"),
+ source_name: text("source_name").notNull(), source_url: text("source_url"),
+ review_status: text("review_status").notNull().default("unreviewed"),
+ imported_at: text("imported_at").notNull(), updated_at: text("updated_at").notNull(),
+}, t => [index("inv_vehicle_reference_lookup").on(t.year,t.make,t.display_model), index("inv_vehicle_reference_raw_lookup").on(t.year,t.make,t.model)]);

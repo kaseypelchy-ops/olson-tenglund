@@ -5,9 +5,10 @@ import { Activity, AlertCircle, Box, Building2, Check, CheckCircle2, ChevronDown
 import { ENTITY_DEFS, ENTITY_LIST, isEntityName, type EntityDefinition, type EntityName, type FieldDefinition } from "@/lib/inventory/entities";
 import { parseCsv, suggestMapping, templateCsv, toCsv } from "@/lib/inventory/csv.mjs";
 import AuthControls from "./auth-controls";
+import VehicleReferencePage from "./vehicle-reference-page";
 
 type Row = Record<string, unknown>;
-type Page = EntityName | "overview" | "stock" | "imports";
+type Page = EntityName | "overview" | "stock" | "imports" | "vehicle-reference";
 type Draft = Record<string, string | number | boolean | null>;
 type Notice = { kind: "success" | "error"; message: string } | null;
 type Bootstrap = { counts?: Record<string, number>; readyCounts?: Record<string, number>; recentImports?: Row[]; recentActivity?: Row[]; setup?: Row | Row[]; permissions?: Row };
@@ -18,7 +19,7 @@ type ImportPreview = { id: string; status: string; validCount: number; errorCoun
 
 const PAGE_SIZE = 25;
 const ENTITY_ICONS: Record<string, LucideIcon> = { products: Package, skus: Box, attributes: SlidersHorizontal, vehicles: Truck, fitments: Wrench, suppliers: Building2, offers: FileText, locations: MapPin, prices: Tag, accounts: Building2 };
-const PAGE_LABELS: Record<string, string> = { overview: "Overview", stock: "Stock & locations", imports: "Import center", products: "Products", skus: "Selling SKUs", attributes: "Part specifications", vehicles: "Vehicle library", fitments: "Fitment applications", suppliers: "Suppliers", offers: "Supplier offers", locations: "Stock locations", prices: "Price lists", accounts: "Shop accounts" };
+const PAGE_LABELS: Record<string, string> = { overview: "Overview", stock: "Stock & locations", imports: "Import center", "vehicle-reference": "Vehicle reference library", products: "Products", skus: "Selling SKUs", attributes: "Part specifications", vehicles: "Vehicle library", fitments: "Fitment applications", suppliers: "Suppliers", offers: "Supplier offers", locations: "Stock locations", prices: "Price lists", accounts: "Shop accounts" };
 const DEPENDENCIES: Record<string, string> = {
   opening_stock: "Create selling SKUs and locations first. Each row is an opening count for one SKU, location and disposition. Include a unique count key and count reason.",
   products: "Start here. Each product needs its own stable key, part brand, manufacturer number and canonical base unit.",
@@ -88,13 +89,13 @@ function EmptyState({ icon: Icon, title, description, children }: { icon: Lucide
 export default function InventoryWorkspace({ staffName }: { staffName: string }) {
   const [page, setPage] = useState<Page>("overview"); const [menuOpen, setMenuOpen] = useState(false); const [version, setVersion] = useState(0); const [notice, setNotice] = useState<Notice>(null); const [editor, setEditor] = useState<{ entity: EntityName; record?: Row } | null>(null); const [stockEditor, setStockEditor] = useState(false); const [importEntity, setImportEntity] = useState<EntityName>("products");
   const bootstrap = useResource<Bootstrap>("/api/admin/bootstrap", version);
-  useEffect(() => { function syncHash() { const hash = window.location.hash.replace(/^#/, ""); const next = hash === "stock" || hash === "imports" || hash === "overview" || isEntityName(hash) ? hash as Page : "overview"; if (isEntityName(next) && isImportOnly(ENTITY_DEFS[next])) { setImportEntity(next); setPage("imports"); } else setPage(next); } syncHash(); window.addEventListener("hashchange", syncHash); return () => window.removeEventListener("hashchange", syncHash); }, []);
+  useEffect(() => { function syncHash() { const hash = window.location.hash.replace(/^#/, ""); const next = hash === "stock" || hash === "imports" || hash === "overview" || hash === "vehicle-reference" || isEntityName(hash) ? hash as Page : "overview"; if (isEntityName(next) && isImportOnly(ENTITY_DEFS[next])) { setImportEntity(next); setPage("imports"); } else setPage(next); } syncHash(); window.addEventListener("hashchange", syncHash); return () => window.removeEventListener("hashchange", syncHash); }, []);
   const navigate = useCallback((next: Page) => { const target = isEntityName(next) && isImportOnly(ENTITY_DEFS[next]) ? "imports" : next; if (target === "imports" && isEntityName(next)) setImportEntity(next); setPage(target); setMenuOpen(false); setNotice(null); window.location.hash = target; }, []);
   const goImport = useCallback((entity: EntityName = "products") => { setImportEntity(entity); navigate("imports"); }, [navigate]);
   function saved(message: string) { setVersion((n) => n + 1); setNotice({ kind: "success", message }); setEditor(null); setStockEditor(false); }
   const navItems: { label: string; items: { page: Page; label: string; icon: LucideIcon; active?: Page[] }[] }[] = [
     { label: "", items: [{ page: "overview", label: "Overview", icon: Gauge }] },
-    { label: "Catalog", items: [{ page: "products", label: "Products", icon: Package }, { page: "skus", label: "Selling SKUs", icon: Box }, ...(isEntityName("attributes") ? [{ page: "attributes" as EntityName, label: "Specifications", icon: SlidersHorizontal }] : []), { page: "vehicles", label: "Vehicle library", icon: Truck }, { page: "fitments", label: "Fitment", icon: Wrench }] },
+    { label: "Catalog", items: [{ page: "products", label: "Products", icon: Package }, { page: "skus", label: "Selling SKUs", icon: Box }, ...(isEntityName("attributes") ? [{ page: "attributes" as EntityName, label: "Specifications", icon: SlidersHorizontal }] : []), { page: "vehicles", label: "Verified vehicles", icon: Truck }, { page: "vehicle-reference", label: "Year / make / model", icon: FileSpreadsheet }, { page: "fitments", label: "Fitment", icon: Wrench }] },
     { label: "Operations", items: [{ page: "stock", label: "Stock & locations", icon: Warehouse, active: ["stock", "locations"] }, { page: "suppliers", label: "Suppliers & offers", icon: Building2, active: ["suppliers", "offers"] }, { page: "prices", label: "Pricing & accounts", icon: Tag, active: ["prices", "accounts"] }] },
     { label: "Data", items: [{ page: "imports", label: "Import center", icon: FileSpreadsheet }] },
   ];
@@ -110,7 +111,7 @@ export default function InventoryWorkspace({ staffName }: { staffName: string })
     <div className="ot-shell"><header className="ot-topbar"><button type="button" className="ot-mobile-menu" aria-label="Open navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={22} /></button><div className="ot-breadcrumb"><span>Inventory workspace</span><i>/</i><span>{PAGE_LABELS[page] || humanize(page)}</span></div><div className="ot-top-actions"><a className="ot-site-link" href="/" target="_blank" rel="noreferrer">View storefront<Store size={15} /></a><AuthControls name={staffName} /></div></header>
       <main className="ot-main" id="ot-main" tabIndex={-1}>
         {notice && <div className={`ot-notice ${notice.kind === "error" ? "ot-error" : ""}`} role="status">{notice.kind === "error" ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}<div>{notice.message}</div><IconButton label="Dismiss notification" onClick={() => setNotice(null)}><X size={17} /></IconButton></div>}
-        {page === "overview" ? <Overview data={bootstrap.data} loading={bootstrap.loading} error={bootstrap.error} retry={bootstrap.refresh} navigate={navigate} create={(entity) => setEditor({ entity })} goImport={goImport} /> : page === "imports" ? <ImportCenter initialEntity={importEntity} version={version} onApplied={(message) => saved(message)} navigate={navigate} /> : page === "stock" ? <StockPage version={version} navigate={navigate} onAdjust={() => setStockEditor(true)} /> : <EntityPage key={page} entity={page} version={version} navigate={navigate} onNew={() => setEditor({ entity: page })} onEdit={(record) => setEditor({ entity: page, record })} goImport={() => goImport(page)} />}
+        {page === "overview" ? <Overview data={bootstrap.data} loading={bootstrap.loading} error={bootstrap.error} retry={bootstrap.refresh} navigate={navigate} create={(entity) => setEditor({ entity })} goImport={goImport} /> : page === "imports" ? <ImportCenter initialEntity={importEntity} version={version} onApplied={(message) => saved(message)} navigate={navigate} /> : page === "stock" ? <StockPage version={version} navigate={navigate} onAdjust={() => setStockEditor(true)} /> : page === "vehicle-reference" ? <VehicleReferencePage /> : <EntityPage key={page} entity={page} version={version} navigate={navigate} onNew={() => setEditor({ entity: page })} onEdit={(record) => setEditor({ entity: page, record })} goImport={() => goImport(page)} />}
       </main>
     </div>
     {editor && <EntityEditor key={`${editor.entity}-${editor.record?.[ENTITY_DEFS[editor.entity].idField] || "new"}`} entity={editor.entity} record={editor.record} onClose={() => setEditor(null)} onSaved={(record) => saved(`${ENTITY_DEFS[editor.entity].singular} ${textValue(record[ENTITY_DEFS[editor.entity].idField])} ${editor.record ? "updated" : "created"}.`)} />}
